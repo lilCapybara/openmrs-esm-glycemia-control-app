@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.openmrs.org/routes.schema.json",
+  "pages": [
+    {
+      "route": "glycemia-control",
+      "component": "root",
+      "online": true
+    }
+  ],
+  "extensions": [
+  ]
+}
