@@ -17,17 +17,21 @@ import {
   TextInput,
   NumberInput,
   Button,
+  Tag,
   InlineLoading,
   InlineNotification,
 } from '@carbon/react';
 import { useConfig } from '@openmrs/esm-framework';
-import { Config } from './config-schema';
+import type { Config } from './config-schema';
+import { getCorrectionForValue } from './glycemia-correction';
 import { useGlycemiaReadings, saveGlycemiaReading } from './glycemia.resource';
 import styles from './glycemia-control.scss';
 
 const headers = [
   { key: 'obsDatetime', header: 'Fecha' },
   { key: 'value', header: 'Valor' },
+  { key: 'correction', header: 'Corrección sugerida' },
+  { key: 'alert', header: 'Alerta' },
 ];
 
 const GlycemiaControl: React.FC = () => {
@@ -39,11 +43,16 @@ const GlycemiaControl: React.FC = () => {
   const [saveError, setSaveError] = useState<string | null>(null);
   const { readings, isLoading, error, mutate } = useGlycemiaReadings(patientUuid);
 
-  const rows = readings.map((r) => ({
-    id: r.uuid,
-    obsDatetime: new Date(r.obsDatetime).toLocaleString(),
-    value: `${r.value} ${config.glucoseUnit}`,
-  }));
+  const rows = readings.map((r) => {
+    const { correctionUnits, shouldAlert } = getCorrectionForValue(r.value, config);
+    return {
+      id: r.uuid,
+      obsDatetime: new Date(r.obsDatetime).toLocaleString(),
+      value: `${r.value} ${config.glucoseUnit}`,
+      correction: correctionUnits !== null ? `${correctionUnits} UI` : 'No corregir',
+      alert: shouldAlert ? <Tag type="red">¡Avisar!</Tag> : <Tag type="green">OK</Tag>,
+    };
+  });
 
   const handleSave = async () => {
     if (!patientUuid || newValue === '') return;
@@ -52,7 +61,7 @@ const GlycemiaControl: React.FC = () => {
     try {
       await saveGlycemiaReading(patientUuid, Number(newValue), config);
       setNewValue('');
-      mutate(); // refresca la tabla con la lectura recién guardada
+      mutate();
     } catch (e) {
       setSaveError('No se pudo guardar la lectura. Revisá la consola para más detalle.');
       console.error(e);
@@ -65,7 +74,6 @@ const GlycemiaControl: React.FC = () => {
     <div className={styles.container}>
       <h3 className={styles.welcome}>{t('welcomeText', 'Glycemia control')}</h3>
 
-      {/* Temporal, solo para probar sin estar todavía dentro del patient chart */}
       <TextInput
         id="patient-uuid-input"
         labelText="UUID de paciente (temporal, para pruebas)"
