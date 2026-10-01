@@ -21,12 +21,13 @@
  * Kent C. Dodds is the inventor of `@testing-library`:
  *   https://testing-library.com/docs/guiding-principles
  */
+
 import React from 'react';
 import { expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { useConfig } from '@openmrs/esm-framework';
 import { Config } from './config-schema';
-import Root from './glycemia-control.component';
+import GlycemiaControl from './glycemia-control.component';
 
 /**
  * This is an idiomatic way of dealing with mocked files. Note that
@@ -37,16 +38,18 @@ import Root from './glycemia-control.component';
  */
 const mockUseConfig = vi.mocked(useConfig<Config>);
 
-it('renders a landing page for the Template app', () => {
-  const config: Config = { casualGreeting: false, whoToGreet: ['World'] };
+it('renders the glycemia control landing page', () => {
+  const config: Config = {
+    glycemiaConceptUuid: '4e396ca3-e951-4c6c-92e9-683ba642169e',
+    glucoseUnit: 'mg/dL',
+    glycemiaThresholds: [70, 180],
+    encounterTypeUuid: '50ce5a90-e738-47c3-bd5b-68464615ce62',
+    locationUuid: 'fc6cecb2-9ab1-4974-988e-295f59000f50',
+  };
   mockUseConfig.mockReturnValue(config);
 
-  render(<Root />);
+  render(<GlycemiaControl />);
 
-  expect(screen.getByRole('heading', { name: /welcome to the o3 template app/i })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: /configuration system/i })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: /extension system/i })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: /data fetching/i })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: /glycemia control/i })).toBeInTheDocument();
   expect(screen.getByRole('heading', { name: /resources/i })).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /get a patient named 'test'/i })).toBeInTheDocument();
 });

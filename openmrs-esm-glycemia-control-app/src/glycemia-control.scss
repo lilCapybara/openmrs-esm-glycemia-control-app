@@ -13,3 +13,11 @@
 .explainer {
   margin-bottom: layout.$spacing-07;
 }
+
+.form {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  margin: 1rem 0 2rem;
+  max-width: 20rem;
+}
