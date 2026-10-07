@@ -4,7 +4,10 @@
  * connects the app shell to the React application(s) that make up this
  * microfrontend.
  */
-import { getAsyncLifecycle, defineConfigSchema } from '@openmrs/esm-framework';
+import { getAsyncLifecycle, getSyncLifecycle, defineConfigSchema } from '@openmrs/esm-framework';
+
+import GlycemiaControlDashboardLink from './glycemia-control-dashboard-link.component';
+
 import { configSchema } from './config-schema';
 
 const moduleName = '@openmrs/esm-glycemia-control-app';
@@ -47,3 +50,7 @@ export const redBox = getAsyncLifecycle(() => import('./boxes/extensions/red-box
 export const blueBox = getAsyncLifecycle(() => import('./boxes/extensions/blue-box.component'), options);
 
 export const brandBox = getAsyncLifecycle(() => import('./boxes/extensions/brand-box.component'), options);
+
+export const glycemiaControlDashboardLink = getSyncLifecycle(GlycemiaControlDashboardLink, options);
+
+export const glycemiaControlDetailedSummary = getAsyncLifecycle(() => import('./glycemia-control.component'), options);

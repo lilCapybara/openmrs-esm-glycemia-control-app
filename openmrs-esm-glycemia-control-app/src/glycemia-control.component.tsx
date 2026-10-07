@@ -3,6 +3,7 @@
  * Build the real UI (glucose readings table, entry form, etc.) here.
  */
 
+import { usePatient } from '@openmrs/esm-framework';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -14,7 +15,6 @@ import {
   TableHeader,
   TableBody,
   TableCell,
-  TextInput,
   NumberInput,
   Button,
   Tag,
@@ -37,7 +37,7 @@ const headers = [
 const GlycemiaControl: React.FC = () => {
   const { t } = useTranslation();
   const config = useConfig<Config>();
-  const [patientUuid, setPatientUuid] = useState('');
+  const { patientUuid } = usePatient();
   const [newValue, setNewValue] = useState<number | ''>('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -55,7 +55,7 @@ const GlycemiaControl: React.FC = () => {
   });
 
   const handleSave = async () => {
-    if (!patientUuid || newValue === '') return;
+    if (newValue === '') return;
     setIsSaving(true);
     setSaveError(null);
     try {
@@ -69,47 +69,38 @@ const GlycemiaControl: React.FC = () => {
       setIsSaving(false);
     }
   };
-
+  // eslint-disable-next-line no-console
+  console.log('DEBUG patientUuid:', patientUuid);
   return (
     <div className={styles.container}>
       <h3 className={styles.welcome}>{t('welcomeText', 'Glycemia control')}</h3>
 
-      <TextInput
-        id="patient-uuid-input"
-        labelText="UUID de paciente (temporal, para pruebas)"
-        value={patientUuid}
-        onChange={(e) => setPatientUuid(e.target.value)}
-        placeholder="Pegá acá el UUID de un paciente"
-      />
-
-      {patientUuid && (
-        <div className={styles.form}>
-          <NumberInput
-            id="new-glycemia-value"
-            label={`Nueva lectura (${config.glucoseUnit})`}
-            value={newValue}
-            onChange={(_e, { value }) => setNewValue(value === '' ? '' : Number(value))}
-            min={0}
-            hideSteppers
+      <div className={styles.form}>
+        <NumberInput
+          id="new-glycemia-value"
+          label={`Nueva lectura (${config.glucoseUnit})`}
+          value={newValue}
+          onChange={(_e, { value }) => setNewValue(value === '' ? '' : Number(value))}
+          min={0}
+          hideSteppers
+        />
+        <Button onClick={handleSave} disabled={isSaving || newValue === ''}>
+          {isSaving ? 'Guardando...' : 'Guardar lectura'}
+        </Button>
+        {saveError && (
+          <InlineNotification
+            kind="error"
+            title={saveError}
+            lowContrast
+            onCloseButtonClick={() => setSaveError(null)}
           />
-          <Button onClick={handleSave} disabled={isSaving || newValue === ''}>
-            {isSaving ? 'Guardando...' : 'Guardar lectura'}
-          </Button>
-          {saveError && (
-            <InlineNotification
-              kind="error"
-              title={saveError}
-              lowContrast
-              onCloseButtonClick={() => setSaveError(null)}
-            />
-          )}
-        </div>
-      )}
+        )}
+      </div>
 
       {isLoading && <InlineLoading description="Cargando lecturas..." />}
       {error && <p>Ocurrió un error al cargar las lecturas.</p>}
 
-      {!isLoading && !error && patientUuid && (
+      {!isLoading && !error && (
         <DataTable rows={rows} headers={headers}>
           {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
             <TableContainer title="Lecturas de glucemia">

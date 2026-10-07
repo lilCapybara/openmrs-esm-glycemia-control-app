@@ -19,12 +19,21 @@
       "name": "Brand box",
       "component": "blueBox",
       "slot": "Boxes"
-    }
-  ],
-  "pages": [
+    },
     {
-      "component": "glycemiaControl",
-      "route": "glycemia-control"
+      "name": "glycemia-control-dashboard-link",
+      "component": "glycemiaControlDashboardLink",
+      "slot": "patient-chart-dashboard-slot",
+      "order": 20,
+      "meta": {
+        "slot": "patient-chart-glycemia-control-dashboard-slot",
+        "path": "glycemia-control"
+      }
+    },
+    {
+      "name": "glycemia-control-detailed-summary",
+      "component": "glycemiaControlDetailedSummary",
+      "slot": "patient-chart-glycemia-control-dashboard-slot"
     }
   ]
 }

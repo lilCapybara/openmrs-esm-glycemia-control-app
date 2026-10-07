@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { openmrsFetch, useConfig } from '@openmrs/esm-framework';
-import { Config } from './config-schema';
+import type { Config } from './config-schema';
 
 export interface GlycemiaReading {
   uuid: string;
@@ -64,6 +64,6 @@ export async function saveGlycemiaReading(patientUuid: string, value: number, co
   return openmrsFetch('/ws/rest/v1/encounter', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body,
   });
 }

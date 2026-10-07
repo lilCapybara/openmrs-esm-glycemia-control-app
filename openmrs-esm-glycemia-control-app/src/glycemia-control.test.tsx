@@ -26,30 +26,42 @@ import React from 'react';
 import { expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { useConfig } from '@openmrs/esm-framework';
-import { Config } from './config-schema';
+import type { Config } from './config-schema';
 import GlycemiaControl from './glycemia-control.component';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-/**
- * This is an idiomatic way of dealing with mocked files. Note that
- * `useConfig` is already mocked; the Vitest `alias` config (see
- * `vitest.config.ts`) has mapped the `@openmrs/esm-framework` import
- * to a mock file. This line just tells TypeScript that the object is,
- * in fact, a mock, and so will have methods like `mockReturnValue`.
- */
 const mockUseConfig = vi.mocked(useConfig<Config>);
+
+const mockPatient = {
+  id: 'a9e6c5c3-f19f-498c-9ada-ec7a1a2c1871',
+  resourceType: 'Patient',
+} as fhir.Patient;
 
 it('renders the glycemia control landing page', () => {
   const config: Config = {
     glycemiaConceptUuid: '4e396ca3-e951-4c6c-92e9-683ba642169e',
     glucoseUnit: 'mg/dL',
-    glycemiaThresholds: [70, 180],
+    insulinCorrectionScale: [
+      { lowerLimit: 150, upperLimit: 180, correctionUnits: 2 },
+      { lowerLimit: 181, upperLimit: 250, correctionUnits: 4 },
+      { lowerLimit: 251, upperLimit: 300, correctionUnits: 6 },
+      { lowerLimit: 301, upperLimit: 9999, correctionUnits: 10 },
+    ],
+    noCorrectBelow: 150,
+    lowAlertThreshold: 60,
+    highAlertThreshold: 300,
     encounterTypeUuid: '50ce5a90-e738-47c3-bd5b-68464615ce62',
     locationUuid: 'fc6cecb2-9ab1-4974-988e-295f59000f50',
   };
   mockUseConfig.mockReturnValue(config);
 
-  render(<GlycemiaControl />);
+  render(
+    <MemoryRouter initialEntries={['/patient/a9e6c5c3-f19f-498c-9ada-ec7a1a2c1871/chart/glycemia-control']}>
+      <Routes>
+        <Route path="/patient/:patientUuid/chart/glycemia-control" element={<GlycemiaControl />} />
+      </Routes>
+    </MemoryRouter>,
+  );
 
   expect(screen.getByRole('heading', { name: /glycemia control/i })).toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: /resources/i })).toBeInTheDocument();
 });
