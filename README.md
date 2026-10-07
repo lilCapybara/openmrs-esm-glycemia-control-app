@@ -39,7 +39,7 @@ Once it is running, a browser window should open running the O3 reference applic
 2. Update `index.ts` with your feature name, page name, and route
 3. Rename the `root.*` files to match your first page
 4. Clear `config-schema` objects and rebuild as needed
-5. Delete the `greeter` and `patient-getter` directories and clear `root.component.tsx`
+5. Delete the `greeter` and `patient-getter` directories and clear `glycemia-control.component.tsx`
 6. Clear `translations/en.json`
 7. Update `.github/workflows` for your deployment needs
 8. Replace this README with documentation for your module

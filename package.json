@@ -1,9 +1,9 @@
 {
-  "name": "@openmrs/esm-template-app",
+  "name": "@openmrs/esm-glycemia-control-app",
   "version": "4.0.0",
   "license": "MPL-2.0",
   "description": "An OpenMRS seed application for building microfrontends",
-  "browser": "dist/openmrs-esm-template-app.js",
+  "browser": "dist/openmrs-esm-glycemia-control-app.js",
   "main": "src/index.ts",
   "source": true,
   "scripts": {
@@ -53,7 +53,7 @@
     "rxjs": "6.x"
   },
   "devDependencies": {
-    "@openmrs/esm-framework": "next",
+    "@openmrs/esm-framework": "^10.0.1-pre.4900",
     "@openmrs/esm-styleguide": "next",
     "@playwright/test": "^1.52.0",
     "@swc/cli": "^0.3.12",
@@ -82,7 +82,7 @@
     "i18next": "^25.0.0",
     "i18next-parser": "^9.3.0",
     "lint-staged": "^15.2.2",
-    "openmrs": "next",
+    "openmrs": "^10.0.1-pre.4900",
     "prettier": "^3.3.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

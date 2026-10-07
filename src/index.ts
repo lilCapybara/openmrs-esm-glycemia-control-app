@@ -4,13 +4,16 @@
  * connects the app shell to the React application(s) that make up this
  * microfrontend.
  */
-import { getAsyncLifecycle, defineConfigSchema } from '@openmrs/esm-framework';
+import { getAsyncLifecycle, getSyncLifecycle, defineConfigSchema } from '@openmrs/esm-framework';
+
+import GlycemiaControlDashboardLink from './glycemia-control-dashboard-link.component';
+
 import { configSchema } from './config-schema';
 
-const moduleName = '@openmrs/esm-template-app';
+const moduleName = '@openmrs/esm-glycemia-control-app';
 
 const options = {
-  featureName: 'root-world',
+  featureName: 'glycemiaControl',
   moduleName,
 };
 
@@ -32,12 +35,12 @@ export function startupApp() {
 }
 
 /**
- * This named export tells the app shell that the default export of `root.component.tsx`
+ * This named export tells the app shell that the default export of glycemia-control.component.tsx
  * should be rendered when the route matches `root`. The full route
  * will be `openmrsSpaBase() + 'root'`, which is usually
  * `/openmrs/spa/root`.
  */
-export const root = getAsyncLifecycle(() => import('./root.component'), options);
+export const glycemiaControl = getAsyncLifecycle(() => import('./glycemia-control.component'), options);
 
 /**
  * The following are named exports for the extensions defined in this frontend modules. See the `routes.json` file to see how these are used.
@@ -47,3 +50,7 @@ export const redBox = getAsyncLifecycle(() => import('./boxes/extensions/red-box
 export const blueBox = getAsyncLifecycle(() => import('./boxes/extensions/blue-box.component'), options);
 
 export const brandBox = getAsyncLifecycle(() => import('./boxes/extensions/brand-box.component'), options);
+
+export const glycemiaControlDashboardLink = getSyncLifecycle(GlycemiaControlDashboardLink, options);
+
+export const glycemiaControlDetailedSummary = getAsyncLifecycle(() => import('./glycemia-control.component'), options);
