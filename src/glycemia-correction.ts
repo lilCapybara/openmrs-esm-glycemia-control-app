@@ -1,4 +1,4 @@
-import { Config, InsulinCorrectionRange } from './config-schema';
+import type { Config, InsulinCorrectionRange } from './config-schema';
 
 export interface CorrectionResult {
   correctionUnits: number | null; // null = no corregir
