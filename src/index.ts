@@ -5,8 +5,7 @@
  * microfrontend.
  */
 import { getAsyncLifecycle, getSyncLifecycle, defineConfigSchema } from '@openmrs/esm-framework';
-
-import GlycemiaControlDashboardLink from './glycemia-control-dashboard-link.component';
+import { createDashboardLink } from '@openmrs/esm-patient-common-lib';
 
 import { configSchema } from './config-schema';
 
@@ -35,22 +34,21 @@ export function startupApp() {
 }
 
 /**
- * This named export tells the app shell that the default export of glycemia-control.component.tsx
- * should be rendered when the route matches `root`. The full route
- * will be `openmrsSpaBase() + 'root'`, which is usually
- * `/openmrs/spa/root`.
+ * Link del sidebar del patient chart. Usa el helper compartido
+ * `createDashboardLink` para heredar exactamente el mismo estilo
+ * (clases CSS, ícono, estados hover/activo) que el resto de las
+ * secciones del patient chart (Programs, Appointments, Billing history, etc.).
  */
-export const glycemiaControl = getAsyncLifecycle(() => import('./glycemia-control.component'), options);
+export const glycemiaControlDashboardLink = getSyncLifecycle(
+  createDashboardLink({
+    path: 'glycemia-control',
+    title: 'Glycemia control',
+    icon: 'omrs-icon-syringe',
+  }),
+  options,
+);
 
 /**
- * The following are named exports for the extensions defined in this frontend modules. See the `routes.json` file to see how these are used.
+ * Contenido que se muestra dentro de la sección (la tabla + formulario).
  */
-export const redBox = getAsyncLifecycle(() => import('./boxes/extensions/red-box.component'), options);
-
-export const blueBox = getAsyncLifecycle(() => import('./boxes/extensions/blue-box.component'), options);
-
-export const brandBox = getAsyncLifecycle(() => import('./boxes/extensions/brand-box.component'), options);
-
-export const glycemiaControlDashboardLink = getSyncLifecycle(GlycemiaControlDashboardLink, options);
-
 export const glycemiaControlDetailedSummary = getAsyncLifecycle(() => import('./glycemia-control.component'), options);
