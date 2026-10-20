@@ -1,244 +1,203 @@
-\# @openmrs/esm-glycemia-control-app
-
-
+# @openmrs/esm-glycemia-control-app
 
 Módulo frontend (O3 ESM) para el registro y seguimiento de glucemias capilares (HGT) de los residentes de la Residencia Santa María, con sugerencia automática de corrección con insulina corriente según una escala provista por el hogar.
 
+Forma parte del proyecto de Práctica Profesional Supervisada (PPS) de TUDAI (UNICEN), junto con el backend y el despliegue en [Historia-clinica-Residencia-Santa-Maria](https://github.com/lilCapybara/Historia-clinica-Residencia-Santa-Maria).
 
+## ¿Qué hace?
 
-Forma parte del proyecto de Práctica Profesional Supervisada (PPS) de TUDAI (UNICEN), junto con el backend en \[`Historia-clinica-Residencia-Santa-Maria`](https://github.com/lilCapybara/Historia-clinica-Residencia-Santa-Maria).
+Agrega una sección "Control de glucemia" al patient chart de OpenMRS 3. Desde ahí se puede:
 
+- Ver el historial de lecturas de un paciente (fecha, valor, corrección sugerida, alerta).
+- Cargar una nueva lectura, que queda guardada como un Encounter en el backend. El valor se valida antes de habilitar "Guardar" (ver [Validación](#4-validación-y-corrección-glycemia-correctionts)).
+- Ver, para cada lectura, cuántas unidades de insulina corriente corresponde aplicar (según una escala configurable) y si el valor amerita avisar al personal por estar muy bajo o muy alto.
 
+Los textos están en inglés y español (ver [Traducciones](#traducciones)).
 
-\## ¿Qué hace?
+## Cómo está organizado
 
+Es un microfrontend O3 estándar (single-spa). Estructura relevante:
 
-
-Agrega una sección "Glycemia control" al patient chart de OpenMRS 3. Desde ahí se puede:
-
-\- Ver el historial de lecturas de glucemia de un paciente (fecha, valor, corrección sugerida, alerta).
-
-\- Cargar una nueva lectura, que queda guardada como un `Encounter` en el backend.
-
-\- Ver automáticamente, para cada lectura, cuántas unidades de insulina corriente correspondería aplicar (según una escala configurable) y si el valor amerita avisar al personal (por estar muy bajo o muy alto).
-
-
-
-\## Arquitectura / cómo está organizado
-
-
-
-Es un microfrontend O3 estándar (single-spa), con esta estructura relevante dentro de `src/`:
-
-
-
+```
 src/
-├── index.ts                                 # entry point: registra extensiones y config schema
+├── index.ts                                  # entry point: registra extensiones y config schema
 ├── routes.json                               # declara slots/extensiones ante el app shell
-├── config-schema.ts                          # esquema de configuración (UUIDs, escala de corrección, umbrales)
-├── glycemia-control.component.tsx            # UI principal: tabla de lecturas + formulario de carga
-├── glycemia.resource.ts                      # llamadas a la REST API de OpenMRS (leer/guardar obs)
-└── glycemia-correction.ts                    # lógica pura de cálculo de corrección y alertas
+├── config-schema.ts                          # esquema de configuración (UUIDs, escala, umbrales)
+├── glycemia-control-dashboard-link.component.tsx  # link del sidebar del patient chart
+├── glycemia-control.component.tsx            # UI principal: tabla de lecturas + formulario
+├── glycemia.resource.ts                      # llamadas a la REST API de OpenMRS
+├── glycemia-correction.ts                    # lógica pura: corrección, alertas y validación
+├── glycemia-correction.test.ts               # tests de la lógica pura
+└── glycemia-control.test.tsx                 # tests del componente
+translations/
+├── en.json
+└── es.json
+```
 
+## Puntos clave para quien vaya a tocar este código
 
+### 1. El módulo vive dentro del patient chart
 
+`glycemia-control.component.tsx` se renderiza como extensión en el slot `patient-chart-glycemia-control-dashboard-slot` (ver `routes.json`), nunca como ruta propia. Por eso:
 
+- El componente **no** recibe el paciente por props ni por `useParams`. Al ser una extensión O3 (un parcel de single-spa separado), no comparte el contexto de `<Router>` del shell, y `useParams` devuelve `undefined`.
+- Se usa `usePatient()` de `@openmrs/esm-framework`, que lee el paciente activo del estado global de la app:
 
-\### Puntos clave para quien vaya a tocar este código
-
-
-
-**1. El módulo vive dentro del patient chart, no es una página standalone.**
-`glycemia-control.component.tsx` se renderiza como una extensión dentro del slot `patient-chart-glycemia-control-dashboard-slot` (ver `routes.json`), nunca como ruta propia tipo `/glycemia-control`. Esto importa porque:
-
-- El componente **no recibe el paciente por props ni por `react-router-dom`'s `useParams`**. Al ser una extensión O3 (un parcel de single-spa separado), no comparte el contexto de `<Router>` del shell — `useParams` siempre devuelve `undefined` ahí adentro.
-- En cambio, se usa `usePatient()` de `@openmrs/esm-framework`, que lee el paciente activo desde el estado global de la app, no del árbol de React:
-```ts
+  ```ts
   const { patientUuid } = usePatient();
+  ```
+
+  Si en un componente nuevo `patientUuid` llega `undefined`, la primera sospecha es haber usado `useParams` en lugar de `usePatient`.
+
+**El link del sidebar** está en `glycemia-control-dashboard-link.component.tsx`. Usa `DashboardExtension` de `@openmrs/esm-framework`, el mismo componente que usan las secciones nativas (Programs, Appointments, Billing history…), así hereda estilo, ícono y estado activo sin copiar CSS. Dos detalles:
+
+- `DashboardExtension` hace `t(title)` sin valor por defecto. Por eso el título se traduce acá, con las traducciones de este módulo, antes de pasarlo: `title={t('glycemiaControl', 'Glycemia control')}`.
+- `basePath` lo inyecta el patient chart.
+
+> Antes se usaba `createDashboardLink` de `@openmrs/esm-patient-common-lib`, pero ese paquete se publica como TypeScript sin compilar y obligaba a modificar `rspack.config.js`. Se reemplazó por `DashboardExtension`, que viene compilado dentro de `esm-framework`. No volver a agregar esa dependencia.
+
+### 2. Cómo se guarda una lectura (`glycemia.resource.ts`)
+
+Una lectura se guarda como un Encounter con un único Obs (no se usa un endpoint de obs directo):
+
 ```
-  Si en algún momento ves que `patientUuid` llega `undefined`/`null` en un componente nuevo dentro del patient chart, **esta es la primera sospecha**: revisá si estás usando `useParams` en vez de `usePatient`.
-
-El link del sidebar ("Glycemia control") no se arma a mano: se registra en `index.ts` con el helper `createDashboardLink` de `@openmrs/esm-patient-common-lib`, que es el mismo que usan las secciones nativas del patient chart (Programs, Appointments, Billing history, etc.). Esto garantiza que el link tenga exactamente el mismo estilo, ícono y comportamiento (hover, estado activo) que el resto, sin tener que replicar CSS a mano — cosa que además es imposible de hacer 1:1, porque esas clases son CSS Modules con hash generado al compilar esa librería.
-
-
-
-\*\*2. Cómo se guarda una lectura (`glycemia.resource.ts`)\*\*
-
-
-
-Una lectura se guarda como un `Encounter` con un único `Obs` (no se usa un endpoint de `obs` directo):
-
-
-
-```ts
-
 POST /ws/rest/v1/encounter
-
 {
-
-&#x20; "patient": patientUuid,
-
-&#x20; "encounterType": encounterTypeUuid,
-
-&#x20; "location": locationUuid,
-
-&#x20; "obs": \[{ "concept": glycemiaConceptUuid, "value": number }]
-
+  "patient": patientUuid,
+  "encounterType": encounterTypeUuid,
+  "location": locationUuid,
+  "obs": [{ "concept": glycemiaConceptUuid, "value": number }]
 }
-
 ```
 
-
-
-Detalle importante de `openmrsFetch`: \*\*stringifica el `body` automáticamente si le pasás un objeto JS, pero NO agrega el header `Content-Type`\*\*. Hay que pasar ambas cosas:
-
-
+`openmrsFetch` stringifica el body automáticamente si le pasás un objeto JS, pero **no agrega el header `Content-Type`**. Hay que pasar ambas cosas:
 
 ```ts
-
 openmrsFetch('/ws/rest/v1/encounter', {
-
-&#x20; method: 'POST',
-
-&#x20; headers: { 'Content-Type': 'application/json' },
-
-&#x20; body, // objeto plano, NO hacer JSON.stringify manualmente
-
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body, // objeto plano, NO hacer JSON.stringify manualmente
 });
-
 ```
 
+Si aparece un 500 `Content type ... not supported` o un 400 `missing patient`, revisar que no se haya vuelto a introducir un doble `JSON.stringify` o que falte el header.
 
-
-Si volvés a ver un 500 "Content type ... not supported" o un 400 "missing patient", revisá que no se haya vuelto a introducir un doble `JSON.stringify` o que falte el header.
-
-
-
-\*\*3. Cómo se leen las lecturas\*\*
-
-
+### 3. Cómo se leen las lecturas
 
 `useGlycemiaReadings(patientUuid)` pega contra:
 
+```
+GET /ws/rest/v1/obs?patient={patientUuid}&concept={glycemiaConceptUuid}&v=custom:(uuid,value,obsDatetime)
+```
 
+con `useSWR`. Expone `mutate()`, que se llama después de un `saveGlycemiaReading` exitoso para refrescar la tabla sin recargar la página.
 
-GET /ws/rest/v1/obs?patient={patientUuid}\&concept={glycemiaConceptUuid}\&v=custom:(uuid,value,obsDatetime)
+### 4. Validación y corrección (`glycemia-correction.ts`)
 
+Lógica pura, sin red ni React, fácil de testear.
 
+**Corrección** (`getCorrectionForValue(value, config)`):
 
-usando `useSWR`. Expone `mutate()`, que hay que llamar después de un `saveGlycemiaReading` exitoso para refrescar la tabla sin recargar la página (ya está cableado así en `glycemia-control.component.tsx`).
+- Si el valor es menor a `noCorrectBelow`, no corresponde corrección (`correctionUnits: null`).
+- Si no, busca en `insulinCorrectionScale` el rango (`lowerLimit`–`upperLimit`) al que pertenece el valor y devuelve sus `correctionUnits`.
+- `shouldAlert` es `true` si el valor está por debajo de `lowAlertThreshold` o por encima de `highAlertThreshold`, independientemente de la corrección.
 
+Escala actual: 150–180 → 2 UI, 181–250 → 4 UI, 251–300 → 6 UI, más de 300 → 10 UI. Por debajo de 150 no se corrige. Alerta si es menor a 60 o mayor a 300.
 
+**Validación** (`getGlycemiaValidationError(value)`): devuelve un código y no un texto, para que la UI lo traduzca.
 
-\*\*4. Lógica de corrección (`glycemia-correction.ts`)\*\*
+| Código | Cuándo |
+|---|---|
+| `notInteger` | el valor tiene decimales |
+| `outOfRange` | está fuera de `MIN_VALID_GLYCEMIA` (20) – `MAX_VALID_GLYCEMIA` (600) |
 
+Solo se aceptan enteros a propósito: la escala usa límites enteros (180 y 181), y un valor como 180,5 caería en un hueco entre rangos. El botón "Guardar" queda deshabilitado mientras haya un error.
 
+### 5. Configuración (`config-schema.ts`)
 
-Es lógica pura, sin dependencias de red ni de React — fácil de testear aisladamente. Dado un valor de glucemia y la config:
-
-\- Si el valor es menor a `noCorrectBelow`, no corresponde corrección (`correctionUnits: null`).
-
-\- Si no, busca en `insulinCorrectionScale` el rango (`lowerLimit`–`upperLimit`) al que pertenece el valor y devuelve las `correctionUnits` de ese rango.
-
-\- `shouldAlert` es `true` si el valor está por debajo de `lowAlertThreshold` o por encima de `highAlertThreshold`, independientemente de la corrección.
-
-
-
-\*\*5. Configuración (`config-schema.ts`)\*\*
-
-
-
-Todo lo específico de la institución (UUIDs, escala, umbrales) es configurable, no hardcodeado en el componente:
-
-
+Todo lo específico de la institución es configurable, no está escrito en el componente:
 
 | Clave | Qué es |
-
 |---|---|
-
-| `glycemiaConceptUuid` | UUID del concept OpenMRS que representa "glucemia" |
-
-| `encounterTypeUuid` | UUID del Encounter Type usado para registrar la lectura |
-
-| `locationUuid` | Location por defecto del encuentro |
-
+| `glycemiaConceptUuid` | UUID del concepto "Glycemia level" |
+| `encounterTypeUuid` | UUID del tipo de encuentro "Glycemia Reading" |
+| `locationUuid` | Ubicación por defecto del encuentro ("Recepcion") |
 | `glucoseUnit` | Unidad mostrada en la UI (ej. `mg/dL`) |
-
 | `insulinCorrectionScale` | Array de rangos `{ lowerLimit, upperLimit, correctionUnits }` |
-
-| `noCorrectBelow` | Por debajo de este valor, no se sugiere corrección |
-
+| `noCorrectBelow` | Por debajo de este valor no se sugiere corrección |
 | `lowAlertThreshold` / `highAlertThreshold` | Umbrales para marcar alerta |
 
+Los valores por defecto del esquema son los UUID del entorno de desarrollo. En el programa se fijan de forma explícita en `OpenMRS/frontend/residencia-config.json` del repositorio de despliegue, bajo la clave `@openmrs/esm-glycemia-control-app`. Esos tres UUID tienen que coincidir con los que crea `distro/configuration` del backend.
 
+### Traducciones
 
-Estos valores se configuran vía el config system de O3 (archivo de config del backend/import map), no se tocan en el código del módulo.
+Se usa `t('clave', 'Texto por defecto en inglés', { variables })`. Los archivos están en `translations/` (`en.json`, `es.json`); se muestra el idioma de la sesión de OpenMRS.
 
+Para agregar un texto: usar `t` con un valor por defecto en inglés y sumar la clave en los dos JSON.
 
+**Cuidado con las unidades:** i18next escapa por defecto los valores interpolados, y la `/` de `mg/dL` aparecería como `mg&#x2F;dL`. Cuando se interpola la unidad hay que pasar `interpolation: { escapeValue: false }`:
 
-\## Cómo correr en desarrollo
+```ts
+t('newReading', 'New reading ({{unit}})', {
+  unit: config.glucoseUnit,
+  interpolation: { escapeValue: false },
+})
+```
 
+## Cómo correr en desarrollo
 
-
-```bash
-
+```
 yarn install
-
-yarn start --backend http://localhost
-
+yarn start
 ```
 
+El script `start` de `package.json` ya incluye `--backend http://localhost:80` y `--config-file` apuntando a `../PPS Residencia Santa Maria/OpenMRS/frontend/residencia-config.json`. Por eso:
 
+- **No agregar otro `--backend`** al correrlo: falla con `arg.endsWith is not a function`.
+- Esa ruta es relativa a la carpeta del módulo y supone que el repo de despliegue está al lado. Si lo tenés en otro lado, ajustá la ruta en el script.
+- Alternativa sin config externa: `yarn openmrs develop --backend http://localhost`.
 
-Esto levanta el dev server de O3 apuntando a un backend local. El módulo se integra al patient chart automáticamente vía `routes.json`.
+Se necesita un backend corriendo (ver el repo de despliegue). El módulo se integra al patient chart vía `routes.json`.
 
-
-
-\## Tests
-
-
-
-```bash
-
-yarn test       # vitest
-
-yarn verify     # lint + typescript + coverage (lo que corre en CI)
+## Tests
 
 ```
-
-
-
-El test actual (`glycemia-control.test.tsx`) solo verifica que el componente renderice sin romper. \*\*Pendiente\*\*: mockear `usePatient()` para poder testear el flujo con un `patientUuid` real (hoy el test corre con `usePatient()` devolviendo `undefined`, por eso vas a ver `DEBUG patientUuid: null` en la salida — ese log de debug además debería eliminarse del componente).
-
-
-## Nota sobre @openmrs/esm-patient-common-lib y el build
-
-Este módulo depende de `@openmrs/esm-patient-common-lib` (para `createDashboardLink`). A diferencia de `@openmrs/esm-framework`, este paquete **no viene compilado**: se publica como código fuente TypeScript crudo, pensado para compilarse dentro del monorepo real de OpenMRS (vía Turborepo), no para instalarse suelto en un proyecto como este.
-
-Por default, la configuración de build de OpenMRS (`openmrs/default-rspack-config`) excluye *todo* `node_modules` del loader de TypeScript, asumiendo que las dependencias ya vienen en JS plano. Eso rompe la compilación en cuanto se importa algo de `esm-patient-common-lib` (errores de parseo tipo "Expected ',', got 'ident'" sobre sintaxis TS normal).
-
-La solución está en `rspack.config.js`: en vez de reexportar la config default tal cual, mutamos `scriptRuleConfig.exclude` (un objeto expuesto por `@openmrs/rspack-config` justamente para este tipo de ajuste) para que la carpeta de `esm-patient-common-lib` sí pase por el loader:
-
-```js
-const rspackConfig = require('openmrs/default-rspack-config');
-
-rspackConfig.scriptRuleConfig.exclude = /node_modules\/(?!@openmrs\/esm-patient-common-lib)/;
-
-module.exports = rspackConfig;
+yarn test      # vitest
+yarn verify    # lint + typescript + coverage (lo que corre en CI)
 ```
 
-**Si en el futuro agregás otra dependencia `@openmrs/esm-*` sin compilar y rompe el build con errores de parseo de TypeScript**, el problema casi seguro es este mismo: hay que sumarla a esa regex (ej. `(?!@openmrs\/(esm-patient-common-lib|esm-otro-paquete))`).
+- `glycemia-correction.test.ts`: límites de la escala, umbrales de alerta y validación.
+- `glycemia-control.test.tsx`: renderizado, error de rango, guardado correcto, error al guardar y alerta en el historial.
 
+Cosas a saber al escribir tests:
 
-\## Cosas pendientes / a mejorar
+- `vitest.config.ts` usa `mockReset: true`: los mocks se configuran en un `beforeEach`, no una sola vez.
+- `@openmrs/esm-framework` se reemplaza por su mock (`esm-framework/mock`). `usePatient`, `useConfig` y la capa de datos (`./glycemia.resource`) se mockean en cada test.
+- El mock de `react-i18next` (`__mocks__/react-i18next.js`) no interpola variables: los tests buscan texto parcial (por ejemplo `/the value must be between/i`).
+- `tools/setup-tests.ts` mockea `@openmrs/esm-offline` por un error de interoperabilidad CJS/ESM de `uuid`. Sin ese mock, los tests fallan con `Cannot read properties of undefined (reading 'v1')`.
+- El warning `Failed prop type: Invalid prop children supplied to DataTable` de Carbon es inocuo.
 
+## Despliegue
 
+El módulo se agrega al programa como módulo propio (no está publicado en npm). Procedimiento completo en el repositorio de despliegue; en resumen:
 
-\- Sacar el `console.log('DEBUG patientUuid', ...)` de `glycemia-control.component.tsx` (quedó de la etapa de debugging).
+```
+yarn build
+```
 
-\- Testear `usePatient()` mockeado en `glycemia-control.test.tsx`.
+1. Copiar el contenido de `dist/` a `OpenMRS/frontend/custom-modules/esm-glycemia-control-app/` (conservando `module.json`).
+2. `module.json` debe tener `name` igual al de `package.json` (`@openmrs/esm-glycemia-control-app`), `entry` igual a `openmrs-esm-glycemia-control-app.js` y `version` igual a la de `package.json`.
+3. Reconstruir y recrear el frontend:
 
-\- Agregar un test unitario para `getCorrectionForValue` (es lógica pura, ideal para testear sin mocks).
+   ```
+   docker compose build frontend
+   docker compose up -d --force-recreate frontend
+   ```
 
-\- Validar en el formulario que el valor cargado esté en un rango fisiológicamente razonable antes de habilitar "Guardar".
+**Compatibilidad:** el módulo se compila con `@openmrs/esm-framework` 11.x (pre-release) y declara compatibilidad con 9.x en el build. Funciona con la imagen de referencia `3.7.x` que usa el programa. Al actualizar la imagen base conviene volver a probarlo.
 
+## Pendientes
+
+- Decidir si deben poder registrarse las lecturas "LO" y "HI" que informa el glucómetro cuando está fuera de rango (hoy: solo enteros entre 20 y 600).
+- Actualizar `repository`, `homepage` y `bugs` de `package.json` (siguen apuntando a la plantilla) y las variables `ESM_NAME` / `JS_NAME` de `.github/workflows/ci.yml`.
+- Agregar traducciones a otros idiomas si hicieran falta (los archivos de la plantilla quedaron como base).
