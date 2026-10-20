@@ -2496,7 +2496,6 @@ __metadata:
   dependencies:
     "@carbon/react": "npm:^1.83.0"
     "@openmrs/esm-framework": "npm:^11.0.1-pre.5771"
-    "@openmrs/esm-patient-common-lib": "npm:^13.0.0"
     "@openmrs/esm-styleguide": "npm:next"
     "@playwright/test": "npm:^1.52.0"
     "@swc/cli": "npm:^0.3.12"
@@ -2555,22 +2554,6 @@ __metadata:
     "@openmrs/esm-state": ^11.0.1-pre.5771
     "@openmrs/esm-translations": ^11.0.1-pre.5771
   checksum: 10/af52110ff0aac57ab103c45257b01751843bc2b4c9fb7aeb7de41c07c2806c171fd15a976051aa240e1e187197c31ab62e540fd0e2a9f922e4567f635cd1a001
-  languageName: node
-  linkType: hard
-
-"@openmrs/esm-patient-common-lib@npm:^13.0.0":
-  version: 13.0.0
-  resolution: "@openmrs/esm-patient-common-lib@npm:13.0.0"
-  dependencies:
-    lodash-es: "npm:^4.18.1"
-    uuid: "npm:^8.3.2"
-  peerDependencies:
-    "@carbon/react": 1.x
-    "@openmrs/esm-framework": 11.x
-    react: 18.x
-    react-dom: 18.x
-    single-spa: 6.x
-  checksum: 10/f5f86fe56ec76595e132035cbd5dc67766fa0e2b9c7b20f3a19e1ca7a451fc85d50aa8739082cb897465bb7d64bd05427316ee4ff6545035f12ceaae11b08fe0
   languageName: node
   linkType: hard
 
@@ -10797,13 +10780,6 @@ __metadata:
   version: 4.17.21
   resolution: "lodash-es@npm:4.17.21"
   checksum: 10/03f39878ea1e42b3199bd3f478150ab723f93cc8730ad86fec1f2804f4a07c6e30deaac73cad53a88e9c3db33348bb8ceeb274552390e7a75d7849021c02df43
-  languageName: node
-  linkType: hard
-
-"lodash-es@npm:^4.18.1":
-  version: 4.18.1
-  resolution: "lodash-es@npm:4.18.1"
-  checksum: 10/8bfad225ef09ef42b04283cdaf7830efcc2ba29ae41b56501c74422155ee1ccaa1f0f6e8319def3451a1fe54dec501c8e4bee622bae2b2d98ac993731e0a5cce
   languageName: node
   linkType: hard
 

@@ -23,3 +23,15 @@ export function getCorrectionForValue(value: number, config: Config): Correction
     shouldAlert,
   };
 }
+
+export const MIN_VALID_GLYCEMIA = 20;
+export const MAX_VALID_GLYCEMIA = 600;
+export type GlycemiaValidationError = 'notInteger' | 'outOfRange';
+
+/** Devuelve el motivo por el que el valor no es una lectura válida, o null si lo es. */
+export function getGlycemiaValidationError(value: number | ''): GlycemiaValidationError | null {
+  if (value === '') return null; // campo vacío: el botón ya está deshabilitado
+  if (!Number.isInteger(value)) return 'notInteger';
+  if (value < MIN_VALID_GLYCEMIA || value > MAX_VALID_GLYCEMIA) return 'outOfRange';
+  return null;
+}
